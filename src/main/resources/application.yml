@@ -60,11 +60,11 @@ application:
 
 twilio:
   account:
-    sid: ""
+    sid: 
   auth:
-    token: ""
+    token: 
   phone:
-    number: ""
+    number: 
 
 sms:
   simulation:
