@@ -58,16 +58,5 @@ application:
         expiration: 604800000 # 7 days
 
 
-twilio:
-  account:
-    sid: 
-  auth:
-    token: 
-  phone:
-    number: 
 
-sms:
-  simulation:
-    enabled: true
-    receiver: "+263771234567"
 
