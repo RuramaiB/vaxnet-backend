@@ -60,15 +60,3 @@ application:
 
 
 
-twilio:
-  account:
-    sid: AC2b86f51b231c135092319c565601bc01
-  auth:
-    token: bb15a3466da0843739e93e56a8af1e9c
-  phone:
-    number: "+18304636184"
-
-sms:
-  simulation:
-    enabled: true
-    receiver: "+263771234567"
