@@ -56,4 +56,8 @@ public class FacilityServices {
 
         return ResponseEntity.ok(facilityResponse);
     }
+
+    public List<Facility> getFacilitiesByDistrict(String district) {
+        return facilityRepository.findByFacilityDistrictContainingIgnoreCase(district);
+    }
 }
