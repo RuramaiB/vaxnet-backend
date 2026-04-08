@@ -25,7 +25,7 @@ public class FacilityController {
     }
 
     @PutMapping("/edit-facility/{facilityID}")
-    public ResponseEntity<FacilityResponse> editFacility(@RequestBody FacilityRequest facilityRequest, @PathVariable String facilityID) {
+    public ResponseEntity<FacilityResponse> editFacility(@RequestBody FacilityRequest facilityRequest, @PathVariable("facilityID") String facilityID) {
         return facilityServices.editFacility(facilityRequest, facilityID);
     }
 }

@@ -18,7 +18,7 @@ public class ImageController {
         return ResponseEntity.ok(imageServices.uploadImage(file));
     }
     @GetMapping("/get-image/{filename}")
-    public byte[] downloadImage(@PathVariable String filename) throws IOException {
+    public byte[] downloadImage(@PathVariable("filename") String filename) throws IOException {
         return imageServices.downloadImage(filename);
     }
 }
