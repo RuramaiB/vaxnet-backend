@@ -24,7 +24,7 @@ public class AppointmentController {
     }
 
     @GetMapping("/get-appointments-by-child/{birthCertificateNumber}")
-    public List<Appointment> getAppointmentsByChild(@PathVariable String birthCertificateNumber) {
+    public List<Appointment> getAppointmentsByChild(@PathVariable("birthCertificateNumber") String birthCertificateNumber) {
         return appointmentServices.getAppointmentsByChild(birthCertificateNumber);
     }
 }

@@ -24,7 +24,7 @@ public class ChildController {
     }
 
     @GetMapping("/get-children-by-parent-email/{parentEmail}")
-    public List<Child> getChildrenByParentEmail(@PathVariable String parentEmail) {
+    public List<Child> getChildrenByParentEmail(@PathVariable("parentEmail") String parentEmail) {
         return childServices.getChildrenByParentEmail(parentEmail);
     }
 }

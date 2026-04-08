@@ -25,11 +25,11 @@ public class AuthenticationController {
     return ResponseEntity.ok(service.register(request));
   }
   @PostMapping("/generate-verification-code-by-/{email}")
-  public String generateVerificationCode(@PathVariable String email){
+  public String generateVerificationCode(@PathVariable("email") String email){
     return service.generateVerificationCode(email);
   }
   @PutMapping("/validate-verification-code-by-/{email}/{code}")
-  public ResponseEntity<String> validateVerificationCode(@PathVariable String email, @PathVariable String code){
+  public ResponseEntity<String> validateVerificationCode(@PathVariable("email") String email, @PathVariable("code") String code){
     return service.verifyCode(email, code);
   }
   @PostMapping("/authenticate")
@@ -57,17 +57,17 @@ public class AuthenticationController {
   }
 
   @PutMapping("/update-user-role-by-/{role}/{email}")
-  public ResponseEntity<AuthenticationResponse> updateUserRole(@PathVariable String email, @PathVariable Role role){
+  public ResponseEntity<AuthenticationResponse> updateUserRole(@PathVariable("email") String email, @PathVariable("role") Role role){
     return service.updateUserRole(email, role);
   }
 
   @GetMapping("/get-user-by-/{email}")
-  public User getUserByEmail(@PathVariable String email){
+  public User getUserByEmail(@PathVariable("email") String email){
     return service.getUserByEmail(email);
   }
 
   @GetMapping("/get-all-users-by-/{role}")
-  public List<User> getAllUsersByRole(@PathVariable Role role){
+  public List<User> getAllUsersByRole(@PathVariable("role") Role role){
     return service.getAllUsersByRole(role);
   }
 }
