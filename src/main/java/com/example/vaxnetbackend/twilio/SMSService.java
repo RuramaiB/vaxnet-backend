@@ -34,6 +34,17 @@ public class SMSService {
     }
 
     public void sendBroadcast(List<String> toPhoneNumbers, String messageBody) {
+        if (simulationEnabled) {
+            System.out.println("BROADCAST SIMULATION: Sending single message to test receiver: " + simulationReceiver);
+            sendSms(simulationReceiver, messageBody);
+            return;
+        }
+
+        if (toPhoneNumbers == null || toPhoneNumbers.isEmpty()) {
+            System.out.println("No phone numbers provided for broadcast.");
+            return;
+        }
+
         for (String phone : toPhoneNumbers) {
             try {
                 sendSms(phone, messageBody);

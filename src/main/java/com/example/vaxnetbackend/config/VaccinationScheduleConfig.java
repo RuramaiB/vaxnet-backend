@@ -1,6 +1,6 @@
 package com.example.vaxnetbackend.config;
 
-import com.example.vaxnetbackend.appointments.AppointmentServices;
+import com.example.vaxnetbackend.immunization.ImmunizationScheduleService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,10 +9,10 @@ import org.springframework.context.annotation.Configuration;
 public class VaccinationScheduleConfig {
 
     @Bean
-    public CommandLineRunner schedulingRunner(AppointmentServices appointmentServices) {
+    public CommandLineRunner schedulingRunner(ImmunizationScheduleService immunizationScheduleService) {
         return args -> {
             System.out.println("Starting automatic vaccination schedule check...");
-            appointmentServices.scheduleForAllUnscheduledChildren();
+            immunizationScheduleService.generateMissingSchedules();
             System.out.println("Automatic vaccination schedule check completed.");
         };
     }

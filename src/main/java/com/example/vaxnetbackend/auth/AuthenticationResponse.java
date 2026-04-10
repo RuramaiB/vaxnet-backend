@@ -20,7 +20,10 @@ public class AuthenticationResponse {
   private Role role;
   private String email;
   private String message;
+  @Builder.Default
   private Boolean isFirstTime = true;
+  @Builder.Default
   private Boolean isVerified = true;
+  @Builder.Default
   private Boolean hasTwoFactor = true;
 }

@@ -1,8 +1,8 @@
 package com.example.vaxnetbackend.auth;
 
 
-import com.example.vaxnetbackend.user.Role;
-import com.example.vaxnetbackend.user.User;
+import com.example.vaxnetbackend.user.*;
+import com.example.vaxnetbackend.auth.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

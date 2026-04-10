@@ -2,6 +2,7 @@ package com.example.vaxnetbackend.immunization;
 
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -11,28 +12,55 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ImmunizationController {
 
-    private final ImmunizationService immunizationService;
+    private final ImmunizationScheduleService immunizationService;
 
     @GetMapping("/schedule/{birthCertificateNumber}")
-    public ScheduleResponse getSchedule(@PathVariable("birthCertificateNumber") String birthCertificateNumber) {
-        return immunizationService.getScheduleForChild(birthCertificateNumber);
+    public ResponseEntity<ImmunizationRecord> getSchedule(@PathVariable("birthCertificateNumber") String birthCertificateNumber) {
+        return ResponseEntity.ok(immunizationService.getScheduleWithStatus(birthCertificateNumber));
+    }
+
+    @GetMapping("/bootstrap")
+    public ResponseEntity<String> bootstrap() {
+        immunizationService.generateMissingSchedules();
+        return ResponseEntity.ok("Immunization schedules and appointments bootstrapped for all children.");
+    }
+
+    @GetMapping("/bootstrap/status")
+    public ResponseEntity<String> getBootstrapStatus() {
+        return ResponseEntity.ok(immunizationService.getBootstrapStats());
     }
 
     @GetMapping("/parent/schedules/{email}")
-    public List<ScheduleResponse> getParentSchedules(@PathVariable("email") String email) {
-        return immunizationService.getSchedulesForParent(email);
+    public ResponseEntity<List<ImmunizationRecord>> getParentSchedules(@PathVariable("email") String email) {
+        return ResponseEntity.ok(immunizationService.getSchedulesForParent(email));
     }
 
     @PostMapping("/administer/{birthCertificateNumber}/{vaccineKey}")
-    public ScheduleResponse administer(
+    public ResponseEntity<ImmunizationRecord> administer(
             @PathVariable("birthCertificateNumber") String birthCertificateNumber,
             @PathVariable("vaccineKey") String vaccineKey,
             @RequestBody AdministerRequest request) {
-        return immunizationService.administerVaccine(birthCertificateNumber, vaccineKey, request.getBatchNumber());
+        return ResponseEntity.ok(immunizationService.administerVaccine(
+                birthCertificateNumber, 
+                vaccineKey, 
+                request.getBatchNumber() != null ? request.getBatchNumber() : "N/A", 
+                request.getAdministeredDate()
+        ));
+    }
+
+    @GetMapping("/overdue")
+    public ResponseEntity<List<ImmunizationRecord>> getOverdue() {
+        return ResponseEntity.ok(immunizationService.getAllWithOverdue());
+    }
+
+    @GetMapping("/due-soon")
+    public ResponseEntity<List<ImmunizationRecord>> getDueSoon() {
+        return ResponseEntity.ok(immunizationService.getAllDueSoon());
     }
 
     @Data
     public static class AdministerRequest {
         private String batchNumber;
+        private String administeredDate;
     }
 }

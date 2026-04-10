@@ -1,9 +1,13 @@
 package com.example.vaxnetbackend.immunization;
-
 import com.example.vaxnetbackend.children.Child;
 import com.example.vaxnetbackend.children.ChildRepository;
 import com.example.vaxnetbackend.exception.ResourceNotFoundException;
+import com.example.vaxnetbackend.notifications.NotificationService;
+import com.example.vaxnetbackend.user.User;
+import com.example.vaxnetbackend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -11,6 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,6 +41,9 @@ public class ImmunizationScheduleService {
 
         private final ImmunizationRecordRepository immunizationRecordRepository;
         private final ChildRepository childRepository;
+        private final NotificationService notificationService;
+        private final UserRepository userRepository;
+        private final com.example.vaxnetbackend.appointments.AppointmentRepository appointmentRepository;
 
         // ─────────────────────────────────────────────────────────────────────────
         // Zimbabwe National Immunization Schedule Constants
@@ -342,8 +350,34 @@ public class ImmunizationScheduleService {
                                                         .doses(doses)
                                                         .build();
 
-                                        return immunizationRecordRepository.save(record);
+                                        ImmunizationRecord saved = immunizationRecordRepository.save(record);
+
+                                        // ── Auto-book all appointments from Birth to 10 Years ──
+                                        preBookAllAppointments(child, doses);
+
+                                        return saved;
                                 });
+        }
+
+        private void preBookAllAppointments(Child child, List<VaccineDose> doses) {
+                for (VaccineDose dose : doses) {
+                        String reason = "Vaccination: " + dose.getVaccineName();
+                        
+                        // Check if an appointment for this dose/reason already exists for this child
+                        boolean exists = appointmentRepository.findAllByChild(child).stream()
+                                .anyMatch(a -> a.getReasonForAppointment().equals(reason));
+                        
+                        if (!exists) {
+                                com.example.vaxnetbackend.appointments.Appointment app = new com.example.vaxnetbackend.appointments.Appointment();
+                                app.setAppointmentID("SCH-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+                                app.setChild(child);
+                                app.setDateOfAppointment(dose.getScheduledDate());
+                                app.setTimeOfAppointment("08:00");
+                                app.setReasonForAppointment(reason);
+                                app.setAppointmentStatus("pending");
+                                appointmentRepository.save(app);
+                        }
+                }
         }
 
         /**
@@ -375,6 +409,20 @@ public class ImmunizationScheduleService {
 
                 record.setDoses(refreshed);
                 return immunizationRecordRepository.save(record);
+        }
+
+        /**
+         * Returns all immunization schedules for children associated with the given
+         * parent email.
+         */
+        public List<ImmunizationRecord> getSchedulesForParent(String parentEmail) {
+                User parent = userRepository.findByEmail(parentEmail)
+                                .orElseThrow(() -> new ResourceNotFoundException("Parent not found: " + parentEmail));
+
+                List<Child> children = childRepository.findByParent(parent);
+                return children.stream()
+                                .map(child -> getScheduleWithStatus(child.getBirthCertificateNumber()))
+                                .collect(Collectors.toList());
         }
 
         /**
@@ -411,7 +459,25 @@ public class ImmunizationScheduleService {
                                 .collect(Collectors.toList());
 
                 record.setDoses(updated);
-                return immunizationRecordRepository.save(record);
+                ImmunizationRecord saved = immunizationRecordRepository.save(record);
+
+                // Send SMS notification
+                if (child.getParent() != null && child.getParent().getPhoneNumber() != null) {
+                        String vaccineName = record.getDoses().stream()
+                                        .filter(d -> d.getVaccineKey().equals(vaccineKey))
+                                        .map(VaccineDose::getVaccineName)
+                                        .findFirst()
+                                        .orElse(vaccineKey);
+
+                        String message = String.format(
+                                        "VaxNet: Your child %s has received the %s vaccine today. Batch: %s. Records updated in your portal.",
+                                        child.getFirstName(), vaccineName, batchNumber);
+
+                        notificationService.broadcastSms(Collections.singletonList(child.getParent().getPhoneNumber()),
+                                        message);
+                }
+
+                return saved;
         }
 
         /**
@@ -451,6 +517,35 @@ public class ImmunizationScheduleService {
                                 .collect(Collectors.toList());
         }
 
+        /**
+         * Iterates through all children and ensures each has an immunization record.
+         * Useful for catching up children added before auto-scheduling was enabled.
+         */
+        public void generateMissingSchedules() {
+                childRepository.findAll().forEach(this::generateSchedule);
+        }
+
+        @EventListener(ApplicationReadyEvent.class)
+        public void onApplicationReady() {
+                System.out.println("Starting Immunization Bootstrap for all children...");
+                generateMissingSchedules();
+                System.out.println("Immunization Bootstrap completed.");
+        }
+
+	public String getBootstrapStats() {
+		long childCount = childRepository.count();
+		long scheduleCount = immunizationRecordRepository.count();
+		long appointmentCount = appointmentRepository.count();
+		return String.format(
+			"=== VaxNet Bootstrap Stats ===\n" +
+			"Children Registered: %d\n" +
+			"Immunization Schedules: %d\n" +
+			"Total Appointments: %d\n" +
+			"============================",
+			childCount, scheduleCount, appointmentCount
+		);
+	}
+
         // ─────────────────────────────────────────────────────────────────────────
         // Private helpers
         // ─────────────────────────────────────────────────────────────────────────
@@ -465,16 +560,22 @@ public class ImmunizationScheduleService {
                 }
 
                 LocalDate today = LocalDate.now();
-                LocalDate scheduledDate = dob.plusWeeks(dose.getScheduledAgeWeeks());
+                LocalDate scheduledDate = LocalDate.parse(dose.getScheduledDate());
 
                 long daysUntilDue = ChronoUnit.DAYS.between(today, scheduledDate);
 
-                // Check if past maximum age
-                if (dose.getMaxAgeWeeks() > 0) {
+                // Administered Date is recorded in the dose object usually during getScheduleWithStatus
+                // If it was already administered, that would have been handled above.
+                
+                if (today.isAfter(scheduledDate)) {
+                    // Logic for MISSED or OVERDUE
+                    if (dose.getMaxAgeWeeks() > 0) {
                         LocalDate maxDate = dob.plusWeeks(dose.getMaxAgeWeeks());
                         if (today.isAfter(maxDate)) {
-                                return VaccineStatus.OVERDUE;
+                            return VaccineStatus.OVERDUE;
                         }
+                    }
+                    return VaccineStatus.MISSED;
                 }
 
                 if (today.isBefore(scheduledDate)) {
@@ -485,7 +586,7 @@ public class ImmunizationScheduleService {
                         return VaccineStatus.NOT_YET_DUE;
                 }
 
-                // Today is on or after the scheduled date
+                // Today is exactly the scheduled date
                 return VaccineStatus.DUE;
         }
 }

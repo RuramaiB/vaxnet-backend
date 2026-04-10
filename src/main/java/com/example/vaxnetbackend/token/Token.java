@@ -22,6 +22,7 @@ public class Token {
   public String id;
   @Indexed(unique = true)
   public String token;
+  @Builder.Default
   public TokenType tokenType = TokenType.BEARER;
   public boolean revoked;
   public boolean expired;
