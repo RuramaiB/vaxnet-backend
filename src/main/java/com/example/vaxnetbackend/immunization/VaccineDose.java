@@ -22,4 +22,12 @@ public class VaccineDose {
     private String administeredDate; // ISO date set when dose is given; null until then
     private String batchNumber; // Recorded when administered
     private VaccineStatus status; // Computed status
+
+    public java.time.LocalDate calculateScheduledDate(java.time.LocalDate dob) {
+        return dob.plusWeeks(this.scheduledAgeWeeks);
+    }
+
+    public String calculateScheduledDateStr(java.time.LocalDate dob) {
+        return calculateScheduledDate(dob).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
+    }
 }

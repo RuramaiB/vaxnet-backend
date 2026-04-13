@@ -320,24 +320,19 @@ public class ImmunizationScheduleService {
                 return immunizationRecordRepository.findByChild(child)
                                 .orElseGet(() -> {
                                         LocalDate dob = LocalDate.parse(child.getDateOfBirth());
-                                        DateTimeFormatter fmt = DateTimeFormatter.ISO_LOCAL_DATE;
 
                                         List<VaccineDose> doses = getZimbabweScheduleTemplate().stream()
                                                         .map(dose -> {
-                                                                LocalDate scheduledDate = dob
-                                                                                .plusWeeks(dose.getScheduledAgeWeeks());
-                                                                VaccineStatus status = computeStatus(dob, dose, null);
+                                                                VaccineStatus status = computeStatus(dob, dose);
                                                                 return VaccineDose.builder()
                                                                                 .vaccineKey(dose.getVaccineKey())
                                                                                 .vaccineName(dose.getVaccineName())
-                                                                                .scheduledAgeWeeks(dose
-                                                                                                .getScheduledAgeWeeks())
+                                                                                .scheduledAgeWeeks(dose.getScheduledAgeWeeks())
                                                                                 .maxAgeWeeks(dose.getMaxAgeWeeks())
                                                                                 .route(dose.getRoute())
                                                                                 .site(dose.getSite())
                                                                                 .dosage(dose.getDosage())
-                                                                                .scheduledDate(scheduledDate
-                                                                                                .format(fmt))
+                                                                                .scheduledDate(dose.calculateScheduledDateStr(dob))
                                                                                 .administeredDate(null)
                                                                                 .batchNumber(null)
                                                                                 .status(status)
@@ -401,7 +396,7 @@ public class ImmunizationScheduleService {
                                         if (dose.getStatus() == VaccineStatus.ADMINISTERED) {
                                                 return dose; // already administered — unchanged
                                         }
-                                        VaccineStatus fresh = computeStatus(dob, dose, null);
+                                        VaccineStatus fresh = computeStatus(dob, dose);
                                         dose.setStatus(fresh);
                                         return dose;
                                 })
@@ -491,7 +486,7 @@ public class ImmunizationScheduleService {
                                                                 return false;
                                                         LocalDate dob = LocalDate
                                                                         .parse(record.getChild().getDateOfBirth());
-                                                        VaccineStatus s = computeStatus(dob, dose, null);
+                                                        VaccineStatus s = computeStatus(dob, dose);
                                                         dose.setStatus(s);
                                                         return s == VaccineStatus.OVERDUE;
                                                 }))
@@ -510,7 +505,7 @@ public class ImmunizationScheduleService {
                                                                 return false;
                                                         LocalDate dob = LocalDate
                                                                         .parse(record.getChild().getDateOfBirth());
-                                                        VaccineStatus s = computeStatus(dob, dose, null);
+                                                        VaccineStatus s = computeStatus(dob, dose);
                                                         dose.setStatus(s);
                                                         return s == VaccineStatus.DUE || s == VaccineStatus.DUE_SOON;
                                                 }))
@@ -554,13 +549,13 @@ public class ImmunizationScheduleService {
          * Computes the current status of a dose given the child's DOB and the dose
          * template.
          */
-        private VaccineStatus computeStatus(LocalDate dob, VaccineDose dose, String existingAdminDate) {
-                if (existingAdminDate != null) {
+        private VaccineStatus computeStatus(LocalDate dob, VaccineDose dose) {
+                if (dose.getAdministeredDate() != null) {
                         return VaccineStatus.ADMINISTERED;
                 }
 
                 LocalDate today = LocalDate.now();
-                LocalDate scheduledDate = LocalDate.parse(dose.getScheduledDate());
+                LocalDate scheduledDate = dose.calculateScheduledDate(dob);
 
                 long daysUntilDue = ChronoUnit.DAYS.between(today, scheduledDate);
 

@@ -46,17 +46,17 @@ public class VaccinationReminderService {
 
         for (ImmunizationRecord record : records) {
             Child child = record.getChild();
-            if (child == null) continue;
+            if (child == null || child.getDateOfBirth() == null) continue;
 
+            LocalDate dob = LocalDate.parse(child.getDateOfBirth());
             User parent = child.getParent();
             if (parent == null) continue;
 
             for (VaccineDose dose : record.getDoses()) {
                 if (dose.getStatus() == VaccineStatus.ADMINISTERED) continue;
-                if (dose.getScheduledDate() == null) continue;
 
                 try {
-                    LocalDate scheduledDate = LocalDate.parse(dose.getScheduledDate());
+                    LocalDate scheduledDate = dose.calculateScheduledDate(dob);
 
                     // ── 7-day advance: auto-book appointment + notify ──
                     if (scheduledDate.equals(sevenDaysFromNow)) {
