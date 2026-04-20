@@ -60,4 +60,10 @@ public class ChildServices {
                 .orElseThrow(() -> new IllegalStateException("Parent with email " + parentEmail + " does not exist"));
         return childRepository.findByParent(parent);
     }
+
+    public List<Child> getChildrenByParent(String parentId) {
+        User parent = userRepository.findById(parentId)
+                .orElseThrow(() -> new IllegalStateException("Parent with ID " + parentId + " does not exist"));
+        return childRepository.findByParent(parent);
+    }
 }

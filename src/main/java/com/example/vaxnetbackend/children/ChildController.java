@@ -27,4 +27,9 @@ public class ChildController {
     public List<Child> getChildrenByParentEmail(@PathVariable("parentEmail") String parentEmail) {
         return childServices.getChildrenByParentEmail(parentEmail);
     }
+
+    @GetMapping("/get-children-by-parent/{parentId}")
+    public List<Child> getChildrenByParent(@PathVariable("parentId") String parentId) {
+        return childServices.getChildrenByParent(parentId);
+    }
 }
